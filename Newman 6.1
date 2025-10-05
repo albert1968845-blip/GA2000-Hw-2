@@ -1,0 +1,40 @@
+import numpy as np
+
+print("The other 3 equations are -V1+4V2-V3-V4=0, -V1-V2+4V3-V4=V+, -V1-V2-V3+4V4=0.")
+
+def gauss_elim(A, b, tol=10e-12):
+    A = np.array(A, dtype=float)
+    b = np.array(b, dtype=float)
+    n = A.shape[0]
+    M = np.hstack((A, b.reshape(-1,1)))
+
+    for k in range(n):
+        pivot = k + np.argmax(np.abs(M[k:,k]))
+        if abs(M[pivot, k]) < tol:
+            raise ValueError("Matrix is singular.")
+        if pivot != k:
+            M[[k,pivot]]=M[[pivot,k]]
+
+        for i in range(k+1,n):
+            factor = M[i, k]/M[k, k]
+            M[i, k:] -= factor * M[k, k:]
+
+    x = np.zeros(n, dtype=float)
+    for i in range(n-1, -1, -1):
+        s = np.dot(M[i, i+1:n], x[i+1:n])
+        x[i] = (M[i, n]-s)/M[i, i]
+    return x
+
+A = np.array([
+    [ 4, -1, -1, -1],
+    [-1, 4, -1, -1], 
+    [-1, -1, 4, -1],
+    [-1, -1, -1, 4]
+], dtype=float)
+
+V_plus = 5.0
+b = np.array([V_plus, 0, V_plus, 0], dtype=float)
+
+V = gauss_elim(A, b)
+print("The solution is ", V)
+
