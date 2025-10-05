@@ -18,7 +18,7 @@ def bisection(f, a, b, eps=1e-6, maxit=10000):
         it += 1
     return 0.5 * (a + b), it
 
-h = 6.62607015e-34    #natural unit
+h = 6.62607015e-34    #SI unit
 c0 = 2.99792458e8
 kb = 1.380649e-23
 
