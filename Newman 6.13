@@ -1,0 +1,30 @@
+def Vien_eq(x):
+    return (5.0 * np.exp(-x) + x - 5.0)
+
+def bisection(f, a, b, eps=1e-6, maxit=10000):
+    fa, fb = f(a), f(b)
+    if fa * fb > 0:
+        raise ValueError("f(a) and f(b) are of same sign, root does not fall in interval [a. b].")
+    it = 0
+    while (b-a)/2.0 > eps and it < maxit:
+        m = 0.5 * (a + b)
+        fm = f(m)
+        if fm== 0.0:
+            return m, it
+        if fa * fm < 0:
+            b, fb = m, fm
+        else:
+            a, fa = m, fm
+        it += 1
+    return 0.5 * (a + b), it
+
+h = 6.62607015e-34    #natural unit
+c0 = 2.99792458e8
+kb = 1.380649e-23
+
+x_root, iters = bisection(Vien_eq, 4.0, 6.0, eps=1e-6)
+b_wien = h * c/(kb * x_root)
+
+print(f"x ≈ {x_root:.8f}  (iterations = {iters})")
+print(f"b ≈ {b_wien:.8e} m·K")
+print(f"The surface temperature of the sun is approximately {b_wien/5.02e-7:.8e} K")
