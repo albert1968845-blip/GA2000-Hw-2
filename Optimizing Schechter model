@@ -1,0 +1,135 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def test_f(v):
+    x, y = v
+    return (x-2.0)**2+(y-2.0)**2
+
+def num_grad(fun, v, h=1e-6):
+    g = np.zeros_like(v, dtype=float)
+    for j in range(len(v)):
+        e = np.zeros_like(v); e[j] = 1.0
+        g[j] = (fun(v + h*e)-fun(v - h*e)) / (2*h)
+    return g
+
+def GD_min(f, x0, h=0.1, tol=1e-10, maxit=10000):
+    x = x0.astype(float).copy()
+    hist = []   #putting in function values of each step
+    path = [x.copy()]
+    for k in range(maxit):
+        val = f(x)
+        hist.append(val)
+        g = num_grad(f, x)
+        if np.linalg.norm(g, ord=np.inf) < tol:
+            break
+        x -= h*g
+        path.append(x.copy())
+    return x, np.array(hist), np.array(path)
+
+# Trial on Test function
+x_test, test_f_vals, path= GD_min(test_f, np.array([0.0, 0.0]))
+print(f"{x_test} is the minimum of test function by gradiant descendant method.")
+
+# Values of descendent functions
+plt.figure(figsize=(5, 4))
+plt.semilogy(test_f_vals, 'o-', label='$f(x,y)$')
+plt.xlabel('Iteration')
+plt.ylabel('Function value')
+plt.title('Gradient descent convergence (test function)')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Contour of convergence
+x = np.linspace(-1, 3.5, 100)
+y = np.linspace(-1, 3.5, 100)
+X, Y = np.meshgrid(x, y)
+Z = (X - 2)**2 + (Y - 2)**2
+
+plt.figure(figsize=(5, 5))
+plt.contour(X, Y, Z, levels=20, cmap='viridis')
+plt.plot(path[:, 0], path[:, 1], 'r.-', label='GD path')
+plt.scatter(2, 2, color='black', marker='*', s=100, label='Minimum')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.title('Path of gradient descent')
+plt.tight_layout()
+plt.show()
+
+# Put our function onto data set
+
+logM, n_data, sigma = np.loadtxt('smf_cosmos.dat', unpack=True)
+M = 10**logM
+
+# Define functions for general parameter space with general elements p
+def n_model(p, M):
+    lnphi, lnMstar, alpha = p
+    phi = np.exp(lnphi)
+    Mstar = np.exp(lnMstar)
+    x = M / Mstar
+    return phi * x**(alpha +1.0) * np.exp(-x) * np.log(10.0)
+
+def chi2(p):
+    model = n_model(p, M)
+    r = (n_data - model) / sigma
+    return np.sum(r*r)
+
+def GD_schechter(p0, eta=1e-3, tol=1e-4, maxit=50000, h=1e-4): 
+    p = p0.astype(float).copy()
+    chi_hist = []
+    for k in range(maxit):
+        val = chi2(p)
+        chi_hist.append(val)
+        g = np.zeros_like(p)
+        for j in range(len(p)):
+            e = np.zeros_like(p)
+            e[j] = 1.0
+            g[j] = (chi2(p + h*e) - chi2(p - h*e)) / (2*h)
+        if np.linalg.norm(g, ord=np.inf) < tol:
+            break
+        # Backtracking line search to avoid high oscillations
+        step = eta
+        p_new = p - step * g
+        if chi2(p_new) > val:  #Armijo criterion
+            for _ in range(10):
+                step *= 0.5
+                p_new = p - step * g
+                if chi2(p_new) <= val:
+                    break
+        p = p_new
+        eta = step
+    return p, np.array(chi_hist)
+
+p0 = np.array([-10.0, np.log(1e10), -1.0])
+p_best, chi_hist = GD_schechter(p0)
+
+print("Best-fit parameters:")
+print(f"ln phi* = {p_best[0]:.3f}, ln M* = {p_best[1]:.3f}, alpha = {p_best[2]:.3f}")
+print(f"phi* = {np.exp(p_best[0]):.3e}, M* = {np.exp(p_best[1]):.3e}")
+
+# chi^2 convergence curve
+plt.figure(figsize=(5, 4))
+plt.semilogy(chi_hist, label=r'$\chi^2$')
+plt.xlabel('Iteration')
+plt.ylabel(r'$\chi^2$')
+plt.title(r'$\chi^2$ convergence during Schechter fitting')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Compare data and model
+n_best = n_model(p_best, M)
+plt.figure(figsize=(5, 4))
+plt.errorbar(logM, n_data, yerr=sigma, fmt='o', label='data')
+plt.plot(logM, n_best, 'r-', label='best-fit model')
+plt.yscale('log')
+plt.xlabel(r'$\log_{10} M_{\rm gal}$')
+plt.ylabel(r'$n(M_{\rm gal})$ [1/dex/Vol]')
+plt.title('Schechter function fit')
+plt.legend()
+plt.grid(True, which='both', ls='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
